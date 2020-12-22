@@ -2,7 +2,7 @@
 //  Copyright © Webbhälsa AB. All rights reserved.
 //
 
-struct WeatherLocation: Decodable {
+struct WeatherLocation: Codable {
     enum Status: String, Codable, CaseIterable {
         case cloudy = "CLOUDY"
         case sunny = "SUNNY"

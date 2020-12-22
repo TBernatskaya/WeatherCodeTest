@@ -22,4 +22,14 @@ class WeatherViewModel {
             }
         })
     }
+
+    func add(location: WeatherLocation, completion: @escaping (Bool, String?) -> ()) {
+        service.add(location: location,
+                    completion: { result in
+                        switch result {
+                        case .success(): self.refresh(completion: completion)
+                        case .failure(let error): completion(false, error.localizedDescription)
+                        }
+                    })
+    }
 }

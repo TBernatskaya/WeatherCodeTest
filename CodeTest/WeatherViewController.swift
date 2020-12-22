@@ -19,22 +19,44 @@ class WeatherViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setup()
+        refresh()
+    }
+}
 
+fileprivate extension WeatherViewController {
+    func setup() {
+        title = "Weather Code Test"
+        tableView.tableFooterView = UIView()
+        tableView.contentInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+
+        let button = UIButton(type: .system)
+        button.frame = CGRect(x: 0, y: 0, width: 30, height: 30)
+        button.setTitle("Add", for: .normal)
+        button.addTarget(self, action: #selector(addLocation), for: .touchUpInside)
+
+        let rightBarButtonItem = UIBarButtonItem(customView: button)
+        self.navigationItem.rightBarButtonItem = rightBarButtonItem
+    }
+
+    func refresh() {
         viewModel.refresh(completion: { success, error in
             if success { self.tableView.reloadData() }
             else { self.displayError(error: error ?? "Ooops! Something went wrong") }
         })
     }
-}
 
-fileprivate extension WeatherViewController {
-    private func setup() {
-        title = "Weather Code Test"
-        tableView.tableFooterView = UIView()
-        tableView.contentInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+    @objc func addLocation() {
+        let location = WeatherLocation(id: UUID().uuidString,
+                                       name: "Test 3",
+                                       status: .cloudy,
+                                       temperature: 5)
+        viewModel.add(location: location, completion: { success, error in
+            if success { self.tableView.reloadData() }
+            else { self.displayError(error: error ?? "Ooops! Something went wrong") }
+        })
     }
 
-    private func displayError(error: String) {
+    func displayError(error: String) {
         let alertController = UIAlertController(title: "Error", message: error, preferredStyle: .alert)
         alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         self.present(alertController, animated: true)
