@@ -32,4 +32,19 @@ class WeatherViewModel {
                         }
                     })
     }
+
+    func remove(index: Int, completion: @escaping (Bool, String?) -> ()) {
+        guard index >= 0,
+              entries.count > index
+        else { return completion(false, ServiceError.cannotRemoveLocation.localizedDescription) }
+
+        let location = entries[index]
+        service.remove(locationID: location.id,
+                       completion: { result in
+                        switch result {
+                        case .success(): self.refresh(completion: completion)
+                        case .failure(let error): completion(false, error.localizedDescription)
+                        }
+                    })
+    }
 }

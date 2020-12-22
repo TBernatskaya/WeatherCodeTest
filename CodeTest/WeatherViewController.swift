@@ -39,10 +39,12 @@ fileprivate extension WeatherViewController {
     }
 
     func refresh() {
-        viewModel.refresh(completion: { success, error in
-            if success { self.tableView.reloadData() }
-            else { self.displayError(error: error ?? "Ooops! Something went wrong") }
-        })
+        viewModel.refresh(completion: { self.handleUpdate(success: $0, error: $1) })
+    }
+
+    func handleUpdate(success: Bool, error: String?) {
+        if success { self.tableView.reloadData() }
+        else { self.displayError(error: error ?? "Ooops! Something went wrong") }
     }
 
     @objc func addLocation() {
@@ -50,10 +52,7 @@ fileprivate extension WeatherViewController {
                                        name: "Test 3",
                                        status: .cloudy,
                                        temperature: 5)
-        viewModel.add(location: location, completion: { success, error in
-            if success { self.tableView.reloadData() }
-            else { self.displayError(error: error ?? "Ooops! Something went wrong") }
-        })
+        viewModel.add(location: location, completion: { self.handleUpdate(success: $0, error: $1) })
     }
 
     func displayError(error: String) {
@@ -75,5 +74,9 @@ extension WeatherViewController {
         cell.setup(entry)
 
         return cell
+    }
+
+    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        viewModel.remove(index: indexPath.row, completion: { self.handleUpdate(success: $0, error: $1) })
     }
 }

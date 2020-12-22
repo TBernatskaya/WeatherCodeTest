@@ -11,6 +11,7 @@ import Foundation
 protocol WeatherService {
     func fetchLocations(completion: @escaping (Result<[WeatherLocation], Error>) -> ())
     func add(location: WeatherLocation, completion: @escaping (Result<Void, Error>) -> ())
+    func remove(locationID: String, completion: @escaping (Result<Void, Error>) -> ())
 }
 
 struct WeatherServiceImplementation: WeatherService {
@@ -74,8 +75,27 @@ struct WeatherServiceImplementation: WeatherService {
             }
         }.resume()
     }
+
+    func remove(locationID: String, completion: @escaping (Result<Void, Error>) -> ()) {
+        var urlRequest = URLRequest(url: URL(string: "https://app-code-test.kry.pet/locations/\(locationID)")!)
+        urlRequest.addValue(apiKey, forHTTPHeaderField: "X-Api-Key")
+        urlRequest.httpMethod = "DELETE"
+
+        URLSession(configuration: .default).dataTask(with: urlRequest) { (data, response, error) in
+            DispatchQueue.main.async {
+                guard let _ = data,
+                      let response = response as? HTTPURLResponse,
+                      response.statusCode == 200,
+                      error == nil
+                else {
+                    return completion(.failure(error ?? ServiceError.cannotRemoveLocation))
+                }
+                completion(.success(()))
+            }
+        }.resume()
+    }
 }
 
 enum ServiceError: Error {
-    case generic, cannotAddLocation
+    case generic, cannotAddLocation, cannotRemoveLocation
 }

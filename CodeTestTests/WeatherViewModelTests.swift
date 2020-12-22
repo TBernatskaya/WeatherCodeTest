@@ -55,6 +55,42 @@ class WeatherViewModelTests: XCTestCase {
             XCTAssertEqual(error, ServiceError.cannotAddLocation.localizedDescription)
         })
     }
+
+    func testRemoveLocationSuccess() {
+        let mockService = WeatherServiceMock()
+        let viewModel = WeatherViewModel(service: mockService)
+
+        viewModel.refresh(completion: { _,_ in })
+
+        viewModel.remove(index: 0, completion: { success, error in
+            XCTAssertTrue(success)
+            XCTAssertNil(error)
+        })
+    }
+
+    func testRemoveLocationFailed() {
+        let mockService = WeatherServiceMock(returnsFailure: true)
+        let viewModel = WeatherViewModel(service: mockService)
+
+        viewModel.refresh(completion: { _,_ in })
+
+        viewModel.remove(index: 0, completion: { success, error in
+            XCTAssertFalse(success)
+            XCTAssertNotNil(error)
+            XCTAssertEqual(error, ServiceError.cannotRemoveLocation.localizedDescription)
+        })
+    }
+
+    func testRemoveLocationFailedNoRefresh() {
+        let mockService = WeatherServiceMock(returnsFailure: true)
+        let viewModel = WeatherViewModel(service: mockService)
+
+        viewModel.remove(index: 0, completion: { success, error in
+            XCTAssertFalse(success)
+            XCTAssertNotNil(error)
+            XCTAssertEqual(error, ServiceError.cannotRemoveLocation.localizedDescription)
+        })
+    }
 }
 
 fileprivate struct WeatherServiceMock: WeatherService {
@@ -79,5 +115,11 @@ fileprivate struct WeatherServiceMock: WeatherService {
         guard returnsFailure
         else { return completion(.success(())) }
         return completion(.failure(ServiceError.cannotAddLocation))
+    }
+
+    func remove(locationID: String, completion: @escaping (Result<Void, Error>) -> ()) {
+        guard returnsFailure
+        else { return completion(.success(())) }
+        return completion(.failure(ServiceError.cannotRemoveLocation))
     }
 }
