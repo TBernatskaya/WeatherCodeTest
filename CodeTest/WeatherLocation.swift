@@ -2,8 +2,6 @@
 //  Copyright © Webbhälsa AB. All rights reserved.
 //
 
-import UIKit
-
 struct WeatherLocation: Decodable {
     enum Status: String, Codable, CaseIterable {
         case cloudy = "CLOUDY"

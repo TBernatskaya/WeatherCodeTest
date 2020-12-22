@@ -10,8 +10,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
-        let controller = WeatherController()
-        let viewController = WeatherViewController.create(controller: controller)
+        let viewModel = WeatherViewModel(service: WeatherServiceImplementation())
+        let viewController = WeatherViewController.create(viewModel: viewModel)
 
         let navigationController = UINavigationController(rootViewController: viewController)
 
