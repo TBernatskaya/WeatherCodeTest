@@ -28,6 +28,7 @@ private extension WeatherLocation.Status {
         case .cloudy: return "☁️"
         case .sunny: return "☀️"
         case .mostlySunny: return "🌤"
+        case .partlySunny: return "🌤"
         case .partlySunnyRain: return "🌦"
         case .thunderCloudAndRain: return "⛈"
         case .tornado: return "🌪"
@@ -42,7 +43,7 @@ private extension WeatherLocation.Status {
         switch self {
         case .cloudy, .rainy, .snowCloud: return .lightGray
         case .tornado, .thunderCloudAndRain, .lightening: return UIColor(red: 255 / 255, green: 113 / 255, blue: 113 / 255, alpha: 1)
-        case .sunny, .mostlySunny, .barelySunny, .partlySunnyRain: return UIColor(red: 114 / 255, green: 168 / 255, blue: 255 / 255, alpha: 1)
+        case .sunny, .mostlySunny, .partlySunny, .barelySunny, .partlySunnyRain: return UIColor(red: 114 / 255, green: 168 / 255, blue: 255 / 255, alpha: 1)
         }
     }
 }

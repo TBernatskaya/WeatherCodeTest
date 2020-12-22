@@ -9,6 +9,7 @@ struct WeatherLocation: Decodable {
         case cloudy = "CLOUDY"
         case sunny = "SUNNY"
         case mostlySunny = "MOSTLY_SUNNY"
+        case partlySunny = "PARTLY_SUNNY"
         case partlySunnyRain = "PARTLY_SUNNY_RAIN"
         case thunderCloudAndRain = "THUNDER_CLOUD_AND_RAIN"
         case tornado = "TORNADO"
