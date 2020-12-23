@@ -8,6 +8,12 @@ class WeatherViewController: UITableViewController {
 
     private var viewModel: WeatherViewModel!
 
+    private let spinner: UIActivityIndicatorView = {
+        let spinner = UIActivityIndicatorView()
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        return spinner
+    }()
+
     static func create(viewModel: WeatherViewModel) -> WeatherViewController {
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         let viewController = storyboard.instantiateInitialViewController() as! WeatherViewController
@@ -35,28 +41,39 @@ fileprivate extension WeatherViewController {
 
         let rightBarButtonItem = UIBarButtonItem(customView: button)
         self.navigationItem.rightBarButtonItem = rightBarButtonItem
+
+        view.addSubview(spinner)
+        NSLayoutConstraint.activate([
+            spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -50)
+        ])
     }
 
     func refresh() {
+        if !spinner.isAnimating { spinner.startAnimating() }
         viewModel.refresh(completion: { self.handleUpdate(success: $0, error: $1) })
     }
 
     func handleUpdate(success: Bool, error: String?) {
-        if success { self.tableView.reloadData() }
-        else { self.displayError(error: error ?? "Ooops! Something went wrong") }
+        spinner.stopAnimating()
+        if success {
+            UIView.transition(with: tableView,
+                              duration: 0.5,
+                              options: .transitionCrossDissolve,
+                              animations: { self.tableView.reloadData() })
+        }
+        else { displayError(error: error ?? "Ooops! Something went wrong") }
     }
 
     @objc func addLocation() {
-        let location = WeatherLocation(id: UUID().uuidString,
-                                       name: "Test 3",
-                                       status: .cloudy,
-                                       temperature: 5)
+        let location = WeatherLocation.randomElement()
+        if !spinner.isAnimating { spinner.startAnimating() }
         viewModel.add(location: location, completion: { self.handleUpdate(success: $0, error: $1) })
     }
 
     func displayError(error: String) {
         let alertController = UIAlertController(title: "Error", message: error, preferredStyle: .alert)
-        alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        alertController.addAction(UIAlertAction(title: "Retry", style: .default, handler: { _ in self.refresh() }))
         self.present(alertController, animated: true)
     }
 }
@@ -76,6 +93,18 @@ extension WeatherViewController {
     }
 
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        if !spinner.isAnimating { spinner.startAnimating() }
         viewModel.remove(index: indexPath.row, completion: { self.handleUpdate(success: $0, error: $1) })
+    }
+}
+
+extension WeatherLocation {
+    static func randomElement() -> WeatherLocation {
+        let cities = ["New York", "Hong Knog", "Kiev", "Moscow", "Helsinki", "Tallin", "Madrid", "Tokio", "Kyoto"]
+
+        return WeatherLocation(id: UUID().uuidString,
+                               name: cities.randomElement()!,
+                               status: WeatherLocation.Status.allCases.randomElement()!,
+                               temperature: Int.random(in: -20..<40))
     }
 }
