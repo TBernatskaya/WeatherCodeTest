@@ -9,15 +9,12 @@
 import Foundation
 
 protocol WeatherService {
-    func fetchLocations(completion: @escaping (Result<[WeatherLocation], Error>) -> ())
-    func add(location: WeatherLocation, completion: @escaping (Result<Void, Error>) -> ())
-    func remove(locationID: String, completion: @escaping (Result<Void, Error>) -> ())
+    func fetchLocations(completion: @escaping (Result<LocationsResult, Error>) -> ())
+    func add(location: WeatherLocation, completion: @escaping (Result<Data, Error>) -> ())
+    func remove(locationID: String, completion: @escaping (Result<Data, Error>) -> ())
 }
 
 struct WeatherServiceImplementation: WeatherService {
-    private struct LocationsResult: Decodable {
-        var locations: [WeatherLocation]
-    }
 
     private var apiKey: String {
         guard let apiKey = UserDefaults.standard.string(forKey: "API_KEY") else {
@@ -28,31 +25,23 @@ struct WeatherServiceImplementation: WeatherService {
         return apiKey
     }
 
-    func fetchLocations(completion: @escaping (Result<[WeatherLocation], Error>) -> ()) {
-        var urlRequest = URLRequest(url: URL(string: "https://app-code-test.kry.pet/locations")!)
+    private let baseURL = "https://app-code-test.kry.pet/locations/"
+
+    func fetchLocations(completion: @escaping (Result<LocationsResult, Error>) -> ()) {
+        var urlRequest = URLRequest(url: URL(string: baseURL)!)
         urlRequest.addValue(apiKey, forHTTPHeaderField: "X-Api-Key")
 
-        URLSession(configuration: .default).dataTask(with: urlRequest) { (data, response, error) in
-            DispatchQueue.main.async {
-                guard let data = data,
-                      let response = response as? HTTPURLResponse,
-                      response.statusCode == 200,
-                      error == nil
-                else {
-                    return completion(.failure(error ?? ServiceError.generic))
-                }
-                do {
-                    let result = try JSONDecoder().decode(LocationsResult.self, from: data)
-                    completion(.success(result.locations))
-                } catch {
-                    return completion(.failure(error))
-                }
-            }
-        }.resume()
+        return fetch(request: urlRequest, defaultError: ServiceError.generic,
+                     completion: { result in
+                        switch result {
+                        case .success(let data): decode(data: data, completion: completion)
+                        case .failure(let error): completion(.failure(error))
+                        }
+                     })
     }
 
-    func add(location: WeatherLocation, completion: @escaping (Result<Void, Error>) -> ()) {
-        var urlRequest = URLRequest(url: URL(string: "https://app-code-test.kry.pet/locations")!)
+    func add(location: WeatherLocation, completion: @escaping (Result<Data, Error>) -> ()) {
+        var urlRequest = URLRequest(url: URL(string: baseURL)!)
         urlRequest.addValue(apiKey, forHTTPHeaderField: "X-Api-Key")
         urlRequest.httpMethod = "POST"
 
@@ -62,37 +51,47 @@ struct WeatherServiceImplementation: WeatherService {
             return completion(.failure(error))
         }
 
-        URLSession(configuration: .default).dataTask(with: urlRequest) { (data, response, error) in
-            DispatchQueue.main.async {
-                guard let _ = data,
-                      let response = response as? HTTPURLResponse,
-                      response.statusCode == 200,
-                      error == nil
-                else {
-                    return completion(.failure(error ?? ServiceError.cannotAddLocation))
-                }
-                completion(.success(()))
-            }
-        }.resume()
+        return fetch(request: urlRequest,
+                     defaultError: ServiceError.cannotAddLocation,
+                     completion: completion)
     }
 
-    func remove(locationID: String, completion: @escaping (Result<Void, Error>) -> ()) {
-        var urlRequest = URLRequest(url: URL(string: "https://app-code-test.kry.pet/locations/\(locationID)")!)
+    func remove(locationID: String, completion: @escaping (Result<Data, Error>) -> ()) {
+        var urlRequest = URLRequest(url: URL(string: baseURL.appending(locationID))!)
         urlRequest.addValue(apiKey, forHTTPHeaderField: "X-Api-Key")
         urlRequest.httpMethod = "DELETE"
 
-        URLSession(configuration: .default).dataTask(with: urlRequest) { (data, response, error) in
+        return fetch(request: urlRequest,
+                     defaultError: ServiceError.cannotRemoveLocation,
+                     completion: completion)
+    }
+}
+
+fileprivate extension WeatherServiceImplementation {
+
+    private func fetch(request: URLRequest, defaultError: Error, completion: @escaping (Result<Data, Error>) -> ()) {
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
-                guard let _ = data,
-                      let response = response as? HTTPURLResponse,
-                      response.statusCode == 200,
-                      error == nil
+                guard
+                    error == nil,
+                    let response = response as? HTTPURLResponse,
+                    response.statusCode == 200,
+                    let data = data
                 else {
-                    return completion(.failure(error ?? ServiceError.cannotRemoveLocation))
+                    return completion(.failure(error ?? defaultError))
                 }
-                completion(.success(()))
+                return completion(.success(data))
             }
-        }.resume()
+        }
+        task.resume()
+    }
+
+    private func decode<T: Decodable>(data: Data, completion: @escaping (Result<T, Error>) -> ()) {
+        do {
+            let model = try JSONDecoder().decode(T.self, from: data)
+            completion(.success(model))
+        }
+        catch { completion(.failure(error)) }
     }
 }
 

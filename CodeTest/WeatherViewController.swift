@@ -30,7 +30,6 @@ fileprivate extension WeatherViewController {
         tableView.contentInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
 
         let button = UIButton(type: .system)
-        button.frame = CGRect(x: 0, y: 0, width: 30, height: 30)
         button.setTitle("Add", for: .normal)
         button.addTarget(self, action: #selector(addLocation), for: .touchUpInside)
 

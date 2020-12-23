@@ -21,3 +21,7 @@ struct WeatherLocation: Codable {
     let status: Status
     let temperature: Int
 }
+
+struct LocationsResult: Decodable {
+    var locations: [WeatherLocation]
+}

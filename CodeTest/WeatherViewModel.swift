@@ -16,7 +16,7 @@ class WeatherViewModel {
         service.fetchLocations(completion: { result in
             switch result {
             case .success(let list):
-                self.entries = list
+                self.entries = list.locations
                 completion(true, nil)
             case .failure(let error): completion(false, error.localizedDescription)
             }
@@ -27,7 +27,7 @@ class WeatherViewModel {
         service.add(location: location,
                     completion: { result in
                         switch result {
-                        case .success(): self.refresh(completion: completion)
+                        case .success(_): self.refresh(completion: completion)
                         case .failure(let error): completion(false, error.localizedDescription)
                         }
                     })
@@ -41,10 +41,10 @@ class WeatherViewModel {
         let location = entries[index]
         service.remove(locationID: location.id,
                        completion: { result in
-                        switch result {
-                        case .success(): self.refresh(completion: completion)
-                        case .failure(let error): completion(false, error.localizedDescription)
-                        }
-                    })
+                            switch result {
+                            case .success(_): self.refresh(completion: completion)
+                            case .failure(let error): completion(false, error.localizedDescription)
+                            }
+                       })
     }
 }
