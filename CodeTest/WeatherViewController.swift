@@ -36,7 +36,7 @@ fileprivate extension WeatherViewController {
         tableView.contentInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
 
         let button = UIButton(type: .system)
-        button.setTitle("Add", for: .normal)
+        button.setTitle("Add location", for: .normal)
         button.addTarget(self, action: #selector(addLocation), for: .touchUpInside)
 
         let rightBarButtonItem = UIBarButtonItem(customView: button)
@@ -57,10 +57,7 @@ fileprivate extension WeatherViewController {
     func handleUpdate(success: Bool, error: String?) {
         spinner.stopAnimating()
         if success {
-            UIView.transition(with: tableView,
-                              duration: 0.5,
-                              options: .transitionCrossDissolve,
-                              animations: { self.tableView.reloadData() })
+            self.tableView.reloadData()
         }
         else { displayError(error: error ?? "Ooops! Something went wrong") }
     }
@@ -100,7 +97,7 @@ extension WeatherViewController {
 
 extension WeatherLocation {
     static func randomElement() -> WeatherLocation {
-        let cities = ["New York", "Hong Knog", "Kiev", "Moscow", "Helsinki", "Tallin", "Madrid", "Tokio", "Kyoto"]
+        let cities = ["New York", "Hong Kong", "Kiev", "Moscow", "Helsinki", "Tallin", "Madrid", "Tokyo", "Kyoto"]
 
         return WeatherLocation(id: UUID().uuidString,
                                name: cities.randomElement()!,

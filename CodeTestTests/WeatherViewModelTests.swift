@@ -32,7 +32,7 @@ class WeatherViewModelTests: XCTestCase {
         viewModel.refresh(completion: { success, error in
             XCTAssertFalse(success)
             XCTAssertNotNil(error)
-            XCTAssertEqual(error, ServiceError.generic.localizedDescription)
+            XCTAssertEqual(error, ServiceError.generic.text)
             XCTAssertEqual(viewModel.entries.count, 0)
         })
     }
@@ -61,7 +61,7 @@ class WeatherViewModelTests: XCTestCase {
                                                 temperature: 20), completion: { success, error in
             XCTAssertFalse(success)
             XCTAssertNotNil(error)
-            XCTAssertEqual(error, ServiceError.cannotAddLocation.localizedDescription)
+            XCTAssertEqual(error, ServiceError.cannotAddLocation.text)
             XCTAssertEqual(viewModel.entries.count, 0)
         })
     }
@@ -86,7 +86,7 @@ class WeatherViewModelTests: XCTestCase {
         viewModel.remove(index: 0, completion: { success, error in
             XCTAssertFalse(success)
             XCTAssertNotNil(error)
-            XCTAssertEqual(error, ServiceError.cannotRemoveLocation.localizedDescription)
+            XCTAssertEqual(error, ServiceError.cannotRemoveLocation.text)
             XCTAssertEqual(viewModel.entries.count, 0)
         })
     }

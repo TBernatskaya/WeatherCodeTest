@@ -28,9 +28,7 @@ struct WeatherServiceImplementation: WeatherService {
     private let baseURL = "https://app-code-test.kry.pet/locations/"
 
     func fetchLocations(completion: @escaping (Result<LocationsResult, Error>) -> ()) {
-        var urlRequest = URLRequest(url: URL(string: baseURL)!)
-        urlRequest.addValue(apiKey, forHTTPHeaderField: "X-Api-Key")
-
+        let urlRequest = request(url: baseURL)
         return fetch(request: urlRequest, defaultError: ServiceError.generic,
                      completion: { result in
                         switch result {
@@ -41,10 +39,7 @@ struct WeatherServiceImplementation: WeatherService {
     }
 
     func add(location: WeatherLocation, completion: @escaping (Result<Data, Error>) -> ()) {
-        var urlRequest = URLRequest(url: URL(string: baseURL)!)
-        urlRequest.addValue(apiKey, forHTTPHeaderField: "X-Api-Key")
-        urlRequest.httpMethod = "POST"
-
+        var urlRequest = request(url: baseURL, method: "POST")
         do {
             urlRequest.httpBody = try JSONEncoder().encode(location)
         } catch {
@@ -57,10 +52,7 @@ struct WeatherServiceImplementation: WeatherService {
     }
 
     func remove(locationID: String, completion: @escaping (Result<Data, Error>) -> ()) {
-        var urlRequest = URLRequest(url: URL(string: baseURL.appending(locationID))!)
-        urlRequest.addValue(apiKey, forHTTPHeaderField: "X-Api-Key")
-        urlRequest.httpMethod = "DELETE"
-
+        let urlRequest = request(url: baseURL.appending(locationID), method: "DELETE")
         return fetch(request: urlRequest,
                      defaultError: ServiceError.cannotRemoveLocation,
                      completion: completion)
@@ -69,7 +61,7 @@ struct WeatherServiceImplementation: WeatherService {
 
 fileprivate extension WeatherServiceImplementation {
 
-    private func fetch(request: URLRequest, defaultError: Error, completion: @escaping (Result<Data, Error>) -> ()) {
+    func fetch(request: URLRequest, defaultError: Error, completion: @escaping (Result<Data, Error>) -> ()) {
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 guard
@@ -86,12 +78,20 @@ fileprivate extension WeatherServiceImplementation {
         task.resume()
     }
 
-    private func decode<T: Decodable>(data: Data, completion: @escaping (Result<T, Error>) -> ()) {
+    func decode<T: Decodable>(data: Data, completion: @escaping (Result<T, Error>) -> ()) {
         do {
             let model = try JSONDecoder().decode(T.self, from: data)
             completion(.success(model))
         }
         catch { completion(.failure(error)) }
+    }
+
+    func request(url: String, method: String? = "GET") -> URLRequest {
+        var urlRequest = URLRequest(url: URL(string: url)!)
+        urlRequest.addValue(apiKey, forHTTPHeaderField: "X-Api-Key")
+        urlRequest.httpMethod = method
+
+        return urlRequest
     }
 }
 
