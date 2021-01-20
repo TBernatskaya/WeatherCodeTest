@@ -7,11 +7,12 @@
 //
 
 import Foundation
+import Combine
 
 protocol WeatherService {
-    func fetchLocations(completion: @escaping (Result<LocationsResult, Error>) -> ())
-    func add(location: WeatherLocation, completion: @escaping (Result<Data, Error>) -> ())
-    func remove(locationID: String, completion: @escaping (Result<Data, Error>) -> ())
+    func fetchLocations() -> AnyPublisher<LocationsResult, ServiceError>
+    func add(location: WeatherLocation) -> AnyPublisher<WeatherLocation, ServiceError>
+    func remove(locationID: String) -> AnyPublisher<Data, ServiceError>
 }
 
 struct WeatherServiceImplementation: WeatherService {
@@ -27,65 +28,36 @@ struct WeatherServiceImplementation: WeatherService {
 
     private let baseURL = "https://app-code-test.kry.pet/locations/"
 
-    func fetchLocations(completion: @escaping (Result<LocationsResult, Error>) -> ()) {
-        let urlRequest = request(url: baseURL)
-        return fetch(request: urlRequest, defaultError: ServiceError.generic,
-                     completion: { result in
-                        switch result {
-                        case .success(let data): decode(data: data, completion: completion)
-                        case .failure(let error): completion(.failure(error))
-                        }
-                     })
+    func fetchLocations() -> AnyPublisher<LocationsResult, ServiceError> {
+        URLSession.shared.dataTaskPublisher(for: request(url: baseURL))
+            .map { $0.data }
+            .decode(type: LocationsResult.self, decoder: JSONDecoder())
+            .mapError { _ in return ServiceError.generic }
+            .eraseToAnyPublisher()
     }
 
-    func add(location: WeatherLocation, completion: @escaping (Result<Data, Error>) -> ()) {
+    func add(location: WeatherLocation) -> AnyPublisher<WeatherLocation, ServiceError> {
         var urlRequest = request(url: baseURL, method: "POST")
-        do {
-            urlRequest.httpBody = try JSONEncoder().encode(location)
-        } catch {
-            return completion(.failure(error))
-        }
+        urlRequest.httpBody = try! JSONEncoder().encode(location)
 
-        return fetch(request: urlRequest,
-                     defaultError: ServiceError.cannotAddLocation,
-                     completion: completion)
+        return URLSession.shared.dataTaskPublisher(for: urlRequest)
+            .map { $0.data }
+            .decode(type: WeatherLocation.self, decoder: JSONDecoder())
+            .mapError { _ in return ServiceError.cannotAddLocation }
+            .eraseToAnyPublisher()
     }
 
-    func remove(locationID: String, completion: @escaping (Result<Data, Error>) -> ()) {
+    func remove(locationID: String) -> AnyPublisher<Data, ServiceError> {
         let urlRequest = request(url: baseURL.appending(locationID), method: "DELETE")
-        return fetch(request: urlRequest,
-                     defaultError: ServiceError.cannotRemoveLocation,
-                     completion: completion)
+
+        return URLSession.shared.dataTaskPublisher(for: urlRequest)
+            .map { $0.data }
+            .mapError { _ in return ServiceError.cannotRemoveLocation }
+            .eraseToAnyPublisher()
     }
 }
 
 fileprivate extension WeatherServiceImplementation {
-
-    func fetch(request: URLRequest, defaultError: Error, completion: @escaping (Result<Data, Error>) -> ()) {
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                guard
-                    error == nil,
-                    let response = response as? HTTPURLResponse,
-                    response.statusCode == 200,
-                    let data = data
-                else {
-                    return completion(.failure(error ?? defaultError))
-                }
-                return completion(.success(data))
-            }
-        }
-        task.resume()
-    }
-
-    func decode<T: Decodable>(data: Data, completion: @escaping (Result<T, Error>) -> ()) {
-        do {
-            let model = try JSONDecoder().decode(T.self, from: data)
-            completion(.success(model))
-        }
-        catch { completion(.failure(error)) }
-    }
-
     func request(url: String, method: String? = "GET") -> URLRequest {
         var urlRequest = URLRequest(url: URL(string: url)!)
         urlRequest.addValue(apiKey, forHTTPHeaderField: "X-Api-Key")

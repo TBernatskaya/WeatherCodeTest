@@ -3,6 +3,7 @@
 //
 
 import XCTest
+import Combine
 @testable import CodeTest
 
 class WeatherViewModelTests: XCTestCase {
@@ -17,24 +18,24 @@ class WeatherViewModelTests: XCTestCase {
     func testRefreshSuccess() {
         let mockService = WeatherServiceMock(testData: testData)
         let viewModel = WeatherViewModel(service: mockService)
+        viewModel.refresh()
 
-        viewModel.refresh(completion: { success, error in
-            XCTAssertTrue(success)
-            XCTAssertNil(error)
+        // TODO: revisit this
+        DispatchQueue.main.async {
             XCTAssertEqual(viewModel.entries.count, 2)
-        })
+            XCTAssertNil(viewModel.displayError)
+        }
     }
 
     func testRefreshFailed() {
         let mockService = WeatherServiceMock(returnsFailure: true, testData: testData)
         let viewModel = WeatherViewModel(service: mockService)
+        viewModel.refresh()
 
-        viewModel.refresh(completion: { success, error in
-            XCTAssertFalse(success)
-            XCTAssertNotNil(error)
-            XCTAssertEqual(error, ServiceError.generic.text)
+        DispatchQueue.main.async {
             XCTAssertEqual(viewModel.entries.count, 0)
-        })
+            XCTAssertEqual(viewModel.displayError, ServiceError.generic.text)
+        }
     }
 
     func testAddLocationSuccess() {
@@ -44,11 +45,12 @@ class WeatherViewModelTests: XCTestCase {
         viewModel.add(location: WeatherLocation(id: UUID().uuidString,
                                                 name: "Test location 3",
                                                 status: .partlySunnyRain,
-                                                temperature: 20), completion: { success, error in
-            XCTAssertTrue(success)
-            XCTAssertNil(error)
+                                                temperature: 20))
+
+        DispatchQueue.main.async {
             XCTAssertEqual(viewModel.entries.count, 3)
-        })
+            XCTAssertNil(viewModel.displayError)
+        }
     }
 
     func testAddLocationFailed() {
@@ -58,37 +60,38 @@ class WeatherViewModelTests: XCTestCase {
         viewModel.add(location: WeatherLocation(id: UUID().uuidString,
                                                 name: "Test location 3",
                                                 status: .partlySunnyRain,
-                                                temperature: 20), completion: { success, error in
-            XCTAssertFalse(success)
-            XCTAssertNotNil(error)
-            XCTAssertEqual(error, ServiceError.cannotAddLocation.text)
+                                                temperature: 20))
+
+        DispatchQueue.main.async {
             XCTAssertEqual(viewModel.entries.count, 0)
-        })
+            XCTAssertEqual(viewModel.displayError, ServiceError.cannotAddLocation.text)
+        }
+
     }
 
     func testRemoveLocationSuccess() {
         let mockService = WeatherServiceMock(testData: testData)
         let viewModel = WeatherViewModel(service: mockService)
 
-        viewModel.refresh(completion: { _,_ in })
+        viewModel.refresh()
+        viewModel.remove(location: testData.testLocations.first!)
 
-        viewModel.remove(index: 0, completion: { success, error in
-            XCTAssertTrue(success)
-            XCTAssertNil(error)
+        DispatchQueue.main.async {
             XCTAssertEqual(viewModel.entries.count, 1)
-        })
+            XCTAssertNil(viewModel.displayError)
+        }
     }
 
     func testRemoveLocationFailed() {
         let mockService = WeatherServiceMock(returnsFailure: true, testData: testData)
         let viewModel = WeatherViewModel(service: mockService)
 
-        viewModel.remove(index: 0, completion: { success, error in
-            XCTAssertFalse(success)
-            XCTAssertNotNil(error)
-            XCTAssertEqual(error, ServiceError.cannotRemoveLocation.text)
+        viewModel.remove(location: testData.testLocations.first!)
+
+        DispatchQueue.main.async {
             XCTAssertEqual(viewModel.entries.count, 0)
-        })
+            XCTAssertEqual(viewModel.displayError, ServiceError.cannotRemoveLocation.text)
+        }
     }
 }
 
@@ -111,33 +114,39 @@ fileprivate struct WeatherServiceMock: WeatherService {
     var returnsFailure: Bool = false
     var testData: TestData
 
-    func fetchLocations(completion: @escaping (Result<LocationsResult, Error>) -> ()) {
+    func fetchLocations() -> AnyPublisher<LocationsResult, ServiceError> {
         if returnsFailure {
-            return completion(.failure(ServiceError.generic))
+            return Fail<LocationsResult, ServiceError>(error: ServiceError.generic).eraseToAnyPublisher()
         }
         else {
-            return completion(.success(LocationsResult(locations: testData.testLocations)))
+            return Just(LocationsResult(locations: testData.testLocations))
+                .setFailureType(to: ServiceError.self)
+                .eraseToAnyPublisher()
         }
     }
 
-    func add(location: WeatherLocation, completion: @escaping (Result<Data, Error>) -> ()) {
+    func add(location: WeatherLocation) -> AnyPublisher<WeatherLocation, ServiceError> {
         if returnsFailure {
-            return completion(.failure(ServiceError.cannotAddLocation))
+            return Fail<WeatherLocation, ServiceError>(error: ServiceError.cannotAddLocation).eraseToAnyPublisher()
         }
         else {
             testData.testLocations.append(location)
-            return completion(.success(Data()))
+            return Just(location)
+                .setFailureType(to: ServiceError.self)
+                .eraseToAnyPublisher()
         }
     }
 
-    func remove(locationID: String, completion: @escaping (Result<Data, Error>) -> ()) {
+    func remove(locationID: String) -> AnyPublisher<Data, ServiceError>  {
         if returnsFailure {
-            return completion(.failure(ServiceError.cannotRemoveLocation))
+            return Fail<Data, ServiceError>(error: ServiceError.cannotRemoveLocation).eraseToAnyPublisher()
         }
         else {
             let index = testData.testLocations.firstIndex(where: { $0.id == locationID })!
             testData.testLocations.remove(at: index)
-            return completion(.success(Data()))
+            return Just(Data())
+                .setFailureType(to: ServiceError.self)
+                .eraseToAnyPublisher()
         }
     }
 }

@@ -3,54 +3,55 @@
 //
 
 import Foundation
+import Combine
 
-class WeatherViewModel {
-    public private(set) var entries: [WeatherLocation] = []
+class WeatherViewModel: ObservableObject {
+    @Published public private(set) var entries: [WeatherLocation] = []
+    @Published public var displayError: String?
     private let service: WeatherService
+    private var cancellable : Set<AnyCancellable> = Set()
 
     init(service: WeatherService) {
         self.service = service
     }
 
-    func refresh(completion: @escaping (Bool, String?) -> ()) {
-        service.fetchLocations(completion: { result in
-            switch result {
-            case .success(let list):
-                self.entries = list.locations
-                completion(true, nil)
-            case .failure(let error): self.handle(error: error, completion: completion)
-            }
-        })
+    func refresh() {
+        service.fetchLocations()
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { self.handle(completion: $0) },
+                receiveValue: { self.entries = $0.locations }
+            )
+            .store(in: &cancellable)
     }
 
-    func add(location: WeatherLocation, completion: @escaping (Bool, String?) -> ()) {
-        service.add(location: location,
-                    completion: { result in
-                        switch result {
-                        case .success(_): self.refresh(completion: completion)
-                        case .failure(let error): self.handle(error: error, completion: completion)
-                        }
-                    })
+    func add(location: WeatherLocation) {
+        service.add(location: location)
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { self.handle(completion: $0) },
+                receiveValue: { _ in self.refresh() }
+            )
+            .store(in: &cancellable)
     }
 
-    func remove(index: Int, completion: @escaping (Bool, String?) -> ()) {
-        guard index >= 0,
-              entries.count > index
-        else { return completion(false, ServiceError.cannotRemoveLocation.text) }
-
-        let location = entries[index]
-        service.remove(locationID: location.id,
-                       completion: { result in
-                            switch result {
-                            case .success(_): self.refresh(completion: completion)
-                            case .failure(let error): self.handle(error: error, completion: completion)
-                            }
-                       })
+    func remove(location: WeatherLocation) {
+        service.remove(locationID: location.id)
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { self.handle(completion: $0) },
+                receiveValue: { _ in self.refresh() }
+            )
+            .store(in: &cancellable)
     }
 
-    fileprivate func handle(error: Error, completion: @escaping (Bool, String?) -> ()) {
+    fileprivate func handle(completion: Subscribers.Completion<ServiceError>) {
+        switch completion {
+        case .failure(let error): self.displayError = self.errorString(error: error)
+        case .finished: break
+        }
+    }
+
+    fileprivate func errorString(error: Error) -> String? {
         let serviceError = error as? ServiceError
-        completion(false, serviceError?.text ?? error.localizedDescription)
+        return serviceError?.text ?? error.localizedDescription
     }
 }
 
