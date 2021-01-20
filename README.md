@@ -5,6 +5,7 @@
 3. Error handling
 4. Unit tests for view model
 5. Code refactoring
+6. Added new branch ```swiftUI-version``` with SwiftUI and Combine implementation
 
 ## Not done
 1. Animations
