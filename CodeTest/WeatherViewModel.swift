@@ -7,6 +7,7 @@ import Combine
 
 class WeatherViewModel: ObservableObject {
     @Published public private(set) var entries: [WeatherLocation] = []
+    @Published public var displayError: String?
     private let service: WeatherService
     private var cancellable : Set<AnyCancellable> = Set()
 
@@ -17,10 +18,8 @@ class WeatherViewModel: ObservableObject {
     func refresh() {
         service.fetchLocations()
             .receive(on: DispatchQueue.main)
-            .sink(receiveCompletion: { _ in },
-                  receiveValue: { values in
-                    self.entries = values.locations
-                  }
+            .sink(receiveCompletion: { self.handle(completion: $0) },
+                receiveValue: { self.entries = $0.locations }
             )
             .store(in: &cancellable)
     }
@@ -28,24 +27,31 @@ class WeatherViewModel: ObservableObject {
     func add(location: WeatherLocation) {
         service.add(location: location)
             .receive(on: DispatchQueue.main)
-            .sink(receiveCompletion: { _ in },
-                  receiveValue: { _ in self.refresh() }
+            .sink(receiveCompletion: { self.handle(completion: $0) },
+                receiveValue: { _ in self.refresh() }
             )
             .store(in: &cancellable)
     }
 
     func remove(location: WeatherLocation) {
         service.remove(locationID: location.id)
-            .sink(receiveCompletion: { _ in },
-                  receiveValue: { _ in self.refresh() }
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { self.handle(completion: $0) },
+                receiveValue: { _ in self.refresh() }
             )
             .store(in: &cancellable)
     }
 
-    // TODO: Use this error handling
-    fileprivate func handle(error: Error, completion: @escaping (Bool, String?) -> ()) {
+    fileprivate func handle(completion: Subscribers.Completion<ServiceError>) {
+        switch completion {
+        case .failure(let error): self.displayError = self.errorString(error: error)
+        case .finished: break
+        }
+    }
+
+    fileprivate func errorString(error: Error) -> String? {
         let serviceError = error as? ServiceError
-        completion(false, serviceError?.text ?? error.localizedDescription)
+        return serviceError?.text ?? error.localizedDescription
     }
 }
 

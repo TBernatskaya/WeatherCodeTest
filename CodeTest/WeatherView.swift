@@ -19,6 +19,8 @@ struct WeatherView: View {
 
     var body: some View {
         VStack {
+            if let errorMessage = viewModel.displayError { Text(errorMessage) }
+
             Button("Add location", action: { viewModel.add(location: WeatherLocation.randomElement()) })
 
             List(viewModel.entries, id: \.id) { entry in

@@ -10,9 +10,9 @@ import Foundation
 import Combine
 
 protocol WeatherService {
-    func fetchLocations() -> AnyPublisher<LocationsResult, Error>
-    func add(location: WeatherLocation) -> AnyPublisher<WeatherLocation, Error>
-    func remove(locationID: String) -> AnyPublisher<Data, Error>
+    func fetchLocations() -> AnyPublisher<LocationsResult, ServiceError>
+    func add(location: WeatherLocation) -> AnyPublisher<WeatherLocation, ServiceError>
+    func remove(locationID: String) -> AnyPublisher<Data, ServiceError>
 }
 
 struct WeatherServiceImplementation: WeatherService {
@@ -28,26 +28,26 @@ struct WeatherServiceImplementation: WeatherService {
 
     private let baseURL = "https://app-code-test.kry.pet/locations/"
 
-    func fetchLocations() -> AnyPublisher<LocationsResult, Error> {
+    func fetchLocations() -> AnyPublisher<LocationsResult, ServiceError> {
         URLSession.shared.dataTaskPublisher(for: request(url: baseURL))
             .map { $0.data }
-            .mapError { _ in return ServiceError.generic }
             .decode(type: LocationsResult.self, decoder: JSONDecoder())
+            .mapError { _ in return ServiceError.generic }
             .eraseToAnyPublisher()
     }
 
-    func add(location: WeatherLocation) -> AnyPublisher<WeatherLocation, Error> {
+    func add(location: WeatherLocation) -> AnyPublisher<WeatherLocation, ServiceError> {
         var urlRequest = request(url: baseURL, method: "POST")
         urlRequest.httpBody = try! JSONEncoder().encode(location)
 
         return URLSession.shared.dataTaskPublisher(for: urlRequest)
             .map { $0.data }
-            .mapError { _ in return ServiceError.cannotAddLocation }
             .decode(type: WeatherLocation.self, decoder: JSONDecoder())
+            .mapError { _ in return ServiceError.cannotAddLocation }
             .eraseToAnyPublisher()
     }
 
-    func remove(locationID: String) -> AnyPublisher<Data, Error> {
+    func remove(locationID: String) -> AnyPublisher<Data, ServiceError> {
         let urlRequest = request(url: baseURL.appending(locationID), method: "DELETE")
 
         return URLSession.shared.dataTaskPublisher(for: urlRequest)
